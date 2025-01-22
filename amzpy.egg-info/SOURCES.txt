@@ -1,0 +1,14 @@
+LICENSE
+README.md
+setup.py
+amzpy/__init__.py
+amzpy/engine.py
+amzpy/functions.py
+amzpy/scraper.py
+amzpy.egg-info/PKG-INFO
+amzpy.egg-info/SOURCES.txt
+amzpy.egg-info/dependency_links.txt
+amzpy.egg-info/requires.txt
+amzpy.egg-info/top_level.txt
+tests/__init__.py
+tests/test_scraper.py
