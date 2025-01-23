@@ -1,0 +1,93 @@
+Metadata-Version: 2.2
+Name: amzpy
+Version: 0.1.2
+Summary: A lightweight Amazon scraper library.
+Home-page: https://github.com/theonlyanil/amzpy
+Author: Anil Sardiwal
+Author-email: theonlyanil@gmail.com
+Keywords: amazon,scraper,web-scraping,product-data,e-commerce
+Classifier: Development Status :: 3 - Alpha
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.6
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Topic :: Software Development :: Libraries :: Python Modules
+Classifier: Topic :: Internet :: WWW/HTTP :: Dynamic Content
+Requires-Python: >=3.6
+Description-Content-Type: text/markdown
+Requires-Dist: requests
+Requires-Dist: beautifulsoup4
+Requires-Dist: fake-useragent
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: keywords
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# AmzPy - Amazon Product Scraper
+[![PyPI](https://img.shields.io/pypi/v/amzpy)](https://pypi.org/project/amzpy/)
+
+AmzPy is a lightweight Python library for scraping product information from Amazon. It provides a simple interface to fetch product details like title, price, currency, and image URL while handling anti-bot measures automatically.
+
+## Features
+
+- Easy-to-use API for scraping Amazon product data
+- Supports multiple Amazon domains (.com, .in, .co.uk, etc.)
+- Built-in anti-bot protection
+- Automatic retries on detection
+- Clean and typed Python interface
+
+## Installation
+
+Install using pip:
+`pip install amzpy`
+
+## Usage
+
+Here's a basic example of how to use AmzPy:
+
+```python
+from amzpy import AmazonScraper
+
+scraper = AmazonScraper()
+product_details = scraper.get_product_details("https://www.amazon.com/dp/B0D4J2QDVY")
+print(product_details)
+```
+
+This will output the product details including title, price, image URL, and currency.
+
+Feel free to explore the codebase for more details and advanced features. Happy scraping!
+
+Output:
+```json
+{
+"title": "Product Title",
+"price": "299",
+"currency": "$",
+"img_url": "https://..."
+}
+```
+## Requirements
+
+- Python 3.6+
+- requests
+- beautifulsoup4
+- fake-useragent
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Contributing
+
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute to this project.

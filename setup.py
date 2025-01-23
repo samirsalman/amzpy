@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="amzpy",
-    version="0.1.0",
+    version="0.1.2",
     description="A lightweight Amazon scraper library.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
