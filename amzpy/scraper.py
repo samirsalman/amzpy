@@ -3,9 +3,9 @@ The main scraper module for the Amazon Product API.
 """
 
 from typing import Dict, Optional
-from engine import RequestEngine
-from parser import parse_product_page
-from utils import parse_amazon_url
+from amzpy.engine import RequestEngine
+from amzpy.parser import parse_product_page
+from amzpy.utils import parse_amazon_url
 
 class AmazonScraper:
     """Main scraper class for Amazon product data"""

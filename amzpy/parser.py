@@ -1,6 +1,6 @@
 from bs4 import BeautifulSoup
 from typing import Dict, Optional
-from engine import RequestEngine
+from amzpy.engine import RequestEngine
 
 def parse_product_page(html_content: str, url: str = None, engine: RequestEngine = None, max_retries: int = 0) -> Optional[Dict]:
     """
