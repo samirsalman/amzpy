@@ -10,6 +10,7 @@ setup(
     author_email="theonlyanil@gmail.com",
     url="https://github.com/theonlyanil/amzpy",
     packages=find_packages(),
+    license_files = ('LICENSE'),
     install_requires=[
         "requests",
         "beautifulsoup4",
