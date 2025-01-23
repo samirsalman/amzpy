@@ -1,5 +1,7 @@
-# AmzPy - Amazon Product Scraper
-[![PyPI](https://img.shields.io/pypi/v/amzpy)](https://pypi.org/project/amzpy/)
+# AmzPy - Amazon Product Scraper [![PyPI](https://img.shields.io/pypi/v/amzpy)](https://pypi.org/project/amzpy/)
+![AmzPy Logo](https://i.imgur.com/QxrE60H.png)
+
+<a href="https://www.producthunt.com/posts/amzpy?embed=true&utm_source=badge-featured&utm_medium=badge&utm_souce=badge-amzpy" target="_blank"><img src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=812920&theme=neutral&t=1737654254074" alt="AmzPy - A&#0032;lightweight&#0032;Amazon&#0032;product&#0032;scraper&#0032;library&#0046; | Product Hunt" style="width: 250px; height: 54px;" width="250" height="54" /></a>
 
 AmzPy is a lightweight Python library for scraping product information from Amazon. It provides a simple interface to fetch product details like title, price, currency, and image URL while handling anti-bot measures automatically.
 
