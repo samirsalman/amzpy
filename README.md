@@ -1,4 +1,5 @@
 # AmzPy - Amazon Product Scraper
+[![PyPI](https://img.shields.io/pypi/v/amzpy)](https://pypi.org/project/amzpy/)
 
 AmzPy is a lightweight Python library for scraping product information from Amazon. It provides a simple interface to fetch product details like title, price, currency, and image URL while handling anti-bot measures automatically.
 
