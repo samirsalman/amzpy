@@ -1,10 +1,14 @@
+CONTRIBUTING.md
 LICENSE
+MANIFEST.in
 README.md
+pyproject.toml
 setup.py
 amzpy/__init__.py
 amzpy/engine.py
-amzpy/functions.py
+amzpy/parser.py
 amzpy/scraper.py
+amzpy/utils.py
 amzpy.egg-info/PKG-INFO
 amzpy.egg-info/SOURCES.txt
 amzpy.egg-info/dependency_links.txt
