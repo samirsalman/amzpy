@@ -37,6 +37,41 @@ def parse_amazon_url(url: str) -> Optional[Tuple[str, str]]:
     
     return base_url, product_id 
 
+def format_canonical_url(url: str, asin: str, country_code: str = None) -> str:
+    """
+    Format a canonical Amazon product URL in the form amazon.{country}/dp/{asin}
+    
+    Args:
+        url (str): Original Amazon URL
+        asin (str): ASIN of the product
+        country_code (str, optional): Country code (e.g., "com", "in")
+        
+    Returns:
+        str: Canonical URL
+    """
+    if not asin:
+        return url  # Return original if no ASIN available
+        
+    # If country_code is not provided, try to extract it from the original URL
+    if not country_code:
+        try:
+            parsed_url = urlparse(url)
+            domain_parts = parsed_url.netloc.split('.')
+            # Extract country code from domain (e.g., www.amazon.com -> com)
+            if len(domain_parts) >= 3 and 'amazon' in domain_parts:
+                amazon_index = domain_parts.index('amazon')
+                if amazon_index + 1 < len(domain_parts):
+                    country_code = domain_parts[amazon_index + 1]
+        except Exception:
+            country_code = "com"  # Default to .com if extraction fails
+    
+    # Default to .com if still no country code
+    if not country_code:
+        country_code = "com"
+        
+    # Create canonical URL
+    return f"https://www.amazon.{country_code}/dp/{asin}"
+
 # Function to extract brand name from text
 def extract_brand_name(text):
     match = re.search(r'visit the (.+?) store', text, re.IGNORECASE)

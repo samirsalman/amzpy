@@ -234,6 +234,6 @@ def example_config():
 if __name__ == "__main__":
     # Uncomment the examples you want to run
     # example_config()
-    example_product_detail()
+    # example_product_detail()
     example_search_by_query("men sneakers size 9")  # Show the enhanced search capabilities 
     # example_search_by_url("https://www.amazon.in/s?i=shoes&rh=n%3A1983518031&s=popularity-rank&fs=true&page=3&qid=1744969008&xpid=N4QxjmZRSTTMf&ref=is_pn_2")

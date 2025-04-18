@@ -9,6 +9,7 @@ This module contains parsing functions for Amazon pages:
 It uses BeautifulSoup to extract structured data from Amazon's HTML.
 """
 
+
 import re
 import json
 from urllib.parse import urljoin, urlparse
@@ -19,43 +20,7 @@ from typing import Dict, Optional, TYPE_CHECKING, Any, List, Tuple
 if TYPE_CHECKING:
     from amzpy.session import AmzSession
 
-from amzpy.utils import extract_brand_name
-
-
-def format_canonical_url(url: str, asin: str, country_code: str = None) -> str:
-    """
-    Format a canonical Amazon product URL in the form amazon.{country}/dp/{asin}
-    
-    Args:
-        url (str): Original Amazon URL
-        asin (str): ASIN of the product
-        country_code (str, optional): Country code (e.g., "com", "in")
-        
-    Returns:
-        str: Canonical URL
-    """
-    if not asin:
-        return url  # Return original if no ASIN available
-        
-    # If country_code is not provided, try to extract it from the original URL
-    if not country_code:
-        try:
-            parsed_url = urlparse(url)
-            domain_parts = parsed_url.netloc.split('.')
-            # Extract country code from domain (e.g., www.amazon.com -> com)
-            if len(domain_parts) >= 3 and 'amazon' in domain_parts:
-                amazon_index = domain_parts.index('amazon')
-                if amazon_index + 1 < len(domain_parts):
-                    country_code = domain_parts[amazon_index + 1]
-        except Exception:
-            country_code = "com"  # Default to .com if extraction fails
-    
-    # Default to .com if still no country code
-    if not country_code:
-        country_code = "com"
-        
-    # Create canonical URL
-    return f"https://www.amazon.{country_code}/dp/{asin}"
+from amzpy.utils import extract_brand_name, format_canonical_url
 
 
 def parse_product_page(html_content: str, url: str = None, engine: Any = None, max_retries: int = 0, country_code: str = None) -> Optional[Dict]:
@@ -247,7 +212,7 @@ def parse_search_page(html_content: str, base_url: str = None, country_code: str
     
     # Prepare results list
     results = []
-    
+
     try:
         # Try to locate search result containers - Amazon has multiple formats
         # Try the most common selectors first
@@ -265,6 +230,7 @@ def parse_search_page(html_content: str, base_url: str = None, country_code: str
         
         # Process each product container
         for container in product_containers:
+            
             try:
                 # Skip sponsored listings if they don't have complete data
                 if 'AdHolder' in container.get('class', []):
@@ -345,7 +311,14 @@ def parse_search_page(html_content: str, base_url: str = None, country_code: str
                         product_data['currency'] = currency_match.group().strip()
                     
                     if price_match:
-                        product_data['price'] = float(price_match.group().replace(',', ''))
+                        price_str = price_match.group().replace(',', '')
+                        # Only convert to float if it's a valid number (not just a decimal point)
+                        if price_str and price_str != ".":
+                            try:
+                                product_data['price'] = float(price_str)
+                            except ValueError:
+                                # If conversion fails, just log and continue without price
+                                print(f"Warning: Could not convert price string: '{price_str}'")
                         
                 # If price not found, try alternative selectors
                 if 'price' not in product_data:
@@ -353,11 +326,16 @@ def parse_search_page(html_content: str, base_url: str = None, country_code: str
                     price_fraction = container.select_one('.a-price-fraction')
                     if price_whole:
                         price_text = price_whole.text.strip().replace(',', '')
-                        if price_fraction:
-                            fraction_text = price_fraction.text.strip()
-                            product_data['price'] = float(f"{price_text}.{fraction_text}")
-                        else:
-                            product_data['price'] = float(price_text)
+                        if price_text and price_text != ".":
+                            try:
+                                if price_fraction:
+                                    fraction_text = price_fraction.text.strip()
+                                    if fraction_text and fraction_text != ".":
+                                        product_data['price'] = float(f"{price_text}.{fraction_text}")
+                                else:
+                                    product_data['price'] = float(price_text)
+                            except ValueError:
+                                print(f"Warning: Could not convert price parts: '{price_text}' and '{fraction_text if price_fraction else ''}'")
                             
                 # Extract currency symbol if not already found
                 if 'currency' not in product_data and container.select_one('.a-price-symbol'):
@@ -369,13 +347,18 @@ def parse_search_page(html_content: str, base_url: str = None, country_code: str
                     original_price_text = original_price_elem.text.strip()
                     price_match = re.search(r'[\d,]+\.?\d*', original_price_text)
                     if price_match:
-                        original_price = float(price_match.group().replace(',', ''))
-                        product_data['original_price'] = original_price
-                        
-                        # Calculate discount percentage if both prices are available
-                        if 'price' in product_data and product_data['price'] > 0:
-                            discount = round(100 - (product_data['price'] / original_price * 100))
-                            product_data['discount_percent'] = discount
+                        price_str = price_match.group().replace(',', '')
+                        if price_str and price_str != ".":
+                            try:
+                                original_price = float(price_str)
+                                product_data['original_price'] = original_price
+                                
+                                # Calculate discount percentage if both prices are available
+                                if 'price' in product_data and product_data['price'] > 0:
+                                    discount = round(100 - (product_data['price'] / original_price * 100))
+                                    product_data['discount_percent'] = discount
+                            except ValueError:
+                                print(f"Warning: Could not convert original price string: '{price_str}'")
                 
                 # Extract discount percentage directly if available
                 discount_text = container.select_one('span:-soup-contains("% off")')
@@ -436,7 +419,12 @@ def parse_search_page(html_content: str, base_url: str = None, country_code: str
                         # Extract the numeric rating
                         rating_match = re.search(r'([\d\.]+)(?:\s+out\s+of\s+5)?', rating_text)
                         if rating_match:
-                            product_data['rating'] = float(rating_match.group(1))
+                            rating_str = rating_match.group(1)
+                            if rating_str and rating_str != ".":
+                                try:
+                                    product_data['rating'] = float(rating_str)
+                                except ValueError:
+                                    print(f"Warning: Could not convert rating string: '{rating_str}'")
                             break
                 
                 # Extract reviews count (multiple possible formats)
@@ -463,15 +451,19 @@ def parse_search_page(html_content: str, base_url: str = None, country_code: str
                         reviews_match = re.search(r'([\d,\.]+)(?:K|k|M)?', reviews_text)
                         if reviews_match:
                             count_text = reviews_match.group(1).replace(',', '')
-                            count = float(count_text)
-                            
-                            # Handle K/M suffixes
-                            if 'K' in reviews_text or 'k' in reviews_text:
-                                count *= 1000
-                            elif 'M' in reviews_text:
-                                count *= 1000000
-                                
-                            product_data['reviews_count'] = int(count)
+                            if count_text and count_text != ".":
+                                try:
+                                    count = float(count_text)
+                                    
+                                    # Handle K/M suffixes
+                                    if 'K' in reviews_text or 'k' in reviews_text:
+                                        count *= 1000
+                                    elif 'M' in reviews_text:
+                                        count *= 1000000
+                                        
+                                    product_data['reviews_count'] = int(count)
+                                except ValueError:
+                                    print(f"Warning: Could not convert reviews count: '{count_text}'")
                             break
                 
                 # Check for Prime eligibility
