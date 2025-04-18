@@ -23,7 +23,7 @@ if TYPE_CHECKING:
 from amzpy.utils import extract_brand_name, format_canonical_url
 
 
-def parse_product_page(html_content: str, url: str = None, engine: Any = None, max_retries: int = 0, country_code: str = None) -> Optional[Dict]:
+def parse_product_page(html_content: str, url: str = None, country_code: str = None) -> Optional[Dict]:
     """
     Parse Amazon product page HTML and extract structured product data.
     
@@ -36,8 +36,6 @@ def parse_product_page(html_content: str, url: str = None, engine: Any = None, m
     Args:
         html_content (str): Raw HTML content of the product page
         url (str, optional): Product URL for reference
-        engine (Any, optional): Legacy parameter, kept for backward compatibility
-        max_retries (int): Legacy parameter, kept for backward compatibility
         country_code (str, optional): Country code for URL formatting
         
     Returns:
