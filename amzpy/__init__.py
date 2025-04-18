@@ -3,6 +3,7 @@ AmzPy - Amazon Product Scraper
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 A lightweight Python library for scraping product information from Amazon.
+Now using curl_cffi for better anti-bot protection.
 
 Basic usage:
     >>> from amzpy import AmazonScraper
@@ -16,6 +17,6 @@ Basic usage:
 
 from .scraper import AmazonScraper
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Anil Sardiwal"
 __license__ = "MIT"

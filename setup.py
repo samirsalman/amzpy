@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="amzpy",
-    version="0.1.2",
+    version="0.2.0",
     description="A lightweight Amazon scraper library.",
     long_description=open("README.md").read(),
     long_description_content_type="text/markdown",
@@ -12,9 +12,10 @@ setup(
     packages=find_packages(),
     license_files = ('LICENSE'),
     install_requires=[
-        "requests",
-        "beautifulsoup4",
-        "fake-useragent",
+        "curl_cffi>=0.5.7",
+        "beautifulsoup4>=4.11.0",
+        "lxml>=4.9.0",
+        "fake_useragent>=1.1.1",
     ],
     classifiers=[
         "Development Status :: 3 - Alpha",
@@ -31,5 +32,5 @@ setup(
         "Topic :: Internet :: WWW/HTTP :: Dynamic Content",
     ],
     python_requires=">=3.6",
-        keywords="amazon, scraper, web-scraping, product-data, e-commerce",
+    keywords="amazon, scraper, web-scraping, product-data, e-commerce, curl_cffi, anti-bot",
 )
