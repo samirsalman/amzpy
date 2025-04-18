@@ -11,7 +11,7 @@ It uses BeautifulSoup to extract structured data from Amazon's HTML.
 
 import re
 import json
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlparse
 from bs4 import BeautifulSoup
 from typing import Dict, Optional, TYPE_CHECKING, Any, List, Tuple
 
@@ -22,7 +22,43 @@ if TYPE_CHECKING:
 from amzpy.utils import extract_brand_name
 
 
-def parse_product_page(html_content: str, url: str = None, engine: Any = None, max_retries: int = 0) -> Optional[Dict]:
+def format_canonical_url(url: str, asin: str, country_code: str = None) -> str:
+    """
+    Format a canonical Amazon product URL in the form amazon.{country}/dp/{asin}
+    
+    Args:
+        url (str): Original Amazon URL
+        asin (str): ASIN of the product
+        country_code (str, optional): Country code (e.g., "com", "in")
+        
+    Returns:
+        str: Canonical URL
+    """
+    if not asin:
+        return url  # Return original if no ASIN available
+        
+    # If country_code is not provided, try to extract it from the original URL
+    if not country_code:
+        try:
+            parsed_url = urlparse(url)
+            domain_parts = parsed_url.netloc.split('.')
+            # Extract country code from domain (e.g., www.amazon.com -> com)
+            if len(domain_parts) >= 3 and 'amazon' in domain_parts:
+                amazon_index = domain_parts.index('amazon')
+                if amazon_index + 1 < len(domain_parts):
+                    country_code = domain_parts[amazon_index + 1]
+        except Exception:
+            country_code = "com"  # Default to .com if extraction fails
+    
+    # Default to .com if still no country code
+    if not country_code:
+        country_code = "com"
+        
+    # Create canonical URL
+    return f"https://www.amazon.{country_code}/dp/{asin}"
+
+
+def parse_product_page(html_content: str, url: str = None, engine: Any = None, max_retries: int = 0, country_code: str = None) -> Optional[Dict]:
     """
     Parse Amazon product page HTML and extract structured product data.
     
@@ -37,6 +73,7 @@ def parse_product_page(html_content: str, url: str = None, engine: Any = None, m
         url (str, optional): Product URL for reference
         engine (Any, optional): Legacy parameter, kept for backward compatibility
         max_retries (int): Legacy parameter, kept for backward compatibility
+        country_code (str, optional): Country code for URL formatting
         
     Returns:
         Dict: Extracted product information 
@@ -152,6 +189,9 @@ def parse_product_page(html_content: str, url: str = None, engine: Any = None, m
             if rating_match:
                 rating = float(rating_match.group(1))
         
+        # Format canonical URL if ASIN is available
+        canonical_url = format_canonical_url(url, asin, country_code) if asin else url
+        
         # Build the final product data dictionary
         product_data = {
             "title": title,
@@ -159,7 +199,7 @@ def parse_product_page(html_content: str, url: str = None, engine: Any = None, m
             "img_url": img_url,
             "currency": currency,
             "brand": brand_name,
-            "url": url,
+            "url": canonical_url,
             "asin": asin,
             "rating": rating
         }
@@ -171,7 +211,7 @@ def parse_product_page(html_content: str, url: str = None, engine: Any = None, m
         return None
 
 
-def parse_search_page(html_content: str, base_url: str = None) -> List[Dict]:
+def parse_search_page(html_content: str, base_url: str = None, country_code: str = None) -> List[Dict]:
     """
     Parse Amazon search results page HTML and extract product listings.
     
@@ -187,6 +227,7 @@ def parse_search_page(html_content: str, base_url: str = None) -> List[Dict]:
     Args:
         html_content (str): Raw HTML content of the search results page
         base_url (str, optional): Base URL for resolving relative URLs
+        country_code (str, optional): Country code for URL formatting
         
     Returns:
         List[Dict]: List of extracted product data dictionaries
@@ -270,9 +311,12 @@ def parse_search_page(html_content: str, base_url: str = None) -> List[Dict]:
                     if href:
                         # Handle relative URLs
                         if href.startswith('/'):
-                            product_data['url'] = urljoin(base_url, href) if base_url else href
+                            product_url = urljoin(base_url, href) if base_url else href
                         else:
-                            product_data['url'] = href
+                            product_url = href
+                            
+                        # Store the URL but also create a canonical version
+                        product_data['url'] = format_canonical_url(product_url, asin, country_code)
                 
                 # Extract brand (multiple possible locations)
                 brand_selectors = [
@@ -451,13 +495,25 @@ def parse_search_page(html_content: str, base_url: str = None) -> List[Dict]:
                         if color_link:
                             color_name = color_link.get('aria-label', '')
                             color_url = color_link.get('href', '')
-                            if color_name and color_url:
+                            color_asin = None
+                            
+                            # Try to extract ASIN from URL
+                            if color_url:
+                                asin_match = re.search(r'/dp/([A-Z0-9]{10})', color_url)
+                                if asin_match:
+                                    color_asin = asin_match.group(1)
+                                
+                            if color_name:
                                 if color_url.startswith('/'):
                                     color_url = urljoin(base_url, color_url) if base_url else color_url
-                                    
+                                
+                                # Format the canonical URL for color variant
+                                canonical_color_url = format_canonical_url(color_url, color_asin, country_code) if color_asin else color_url
+                                
                                 color_variants.append({
                                     'name': color_name,
-                                    'url': color_url
+                                    'url': canonical_color_url,
+                                    'asin': color_asin
                                 })
                 
                 if color_variants:
@@ -486,7 +542,7 @@ def parse_search_page(html_content: str, base_url: str = None) -> List[Dict]:
                     product_data['deal'] = True
                 
                 # Add the product to our results list if we have the key information
-                if product_data.get('title') and product_data.get('url'):
+                if product_data.get('title') and product_data.get('asin'):
                     results.append(product_data)
                 
             except Exception as e:

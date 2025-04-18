@@ -132,10 +132,11 @@ class AmazonScraper:
             print(f"Failed to fetch product page for: {product_url}")
             return None
         
-        # Parse the product page HTML
+        # Parse the product page HTML, passing country code for URL formatting
         product_data = parse_product_page(
             html_content=response.text,
-            url=product_url
+            url=product_url,
+            country_code=self.country_code
         )
         
         if not product_data:
@@ -189,9 +190,13 @@ class AmazonScraper:
                 print(f"Failed to fetch search page: {current_url}")
                 break
                 
-            # Parse products from the current page
+            # Parse products from the current page, passing country code for URL formatting
             base_url = f"https://www.amazon.{self.country_code}"
-            products = parse_search_page(response.text, base_url)
+            products = parse_search_page(
+                response.text, 
+                base_url,
+                country_code=self.country_code
+            )
             
             # Check if we got valid results
             if not products:

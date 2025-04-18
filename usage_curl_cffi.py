@@ -52,6 +52,7 @@ def example_product_detail():
         print(f"Price: {product.get('currency', '')} {product.get('price')}")
         print(f"Rating: {product.get('rating')} / 5.0")
         print(f"Image URL: {product.get('img_url')}")
+        print(f"Product URL: {product.get('url')}")
         
         # Save to JSON file for reference
         with open(f"product_{product.get('asin')}.json", "w") as f:
@@ -61,7 +62,7 @@ def example_product_detail():
         print("Failed to fetch product details.")
 
 
-def example_search():
+def example_search_by_query(query: str = None):
     """Example: Searching for products with enhanced parsing"""
     print_section("Enhanced Product Search Example")
     
@@ -73,10 +74,9 @@ def example_search():
     
     # Method 1: Search for shoes on Amazon India 
     print("\n--- Method 1: Enhanced Search by Keyword ---")
-    query = "iphone 16 case"
     print(f"Searching for: '{query}' on Amazon India")
     
-    # Search with 1 page of results for demonstration
+    # Search with 5 pages of results for demonstration
     products = scraper.search_products(query=query, max_pages=5)
     
     # Display the enhanced results
@@ -89,6 +89,7 @@ def example_search():
             print(f"\n{i}. {product.get('title', 'N/A')}")
             print(f"   Brand: {product.get('brand', 'N/A')}")
             print(f"   Price: {product.get('currency', '')} {product.get('price', 'N/A')}")
+            print(f"   URL: {product.get('url')}")  # This will now be in canonical format
             
             # Display discount information if available
             if 'original_price' in product:
@@ -102,9 +103,11 @@ def example_search():
             # Display color variants if available
             if 'color_variants' in product:
                 variant_count = len(product['color_variants'])
-                print(f"   Available in {variant_count} colors: " + 
-                      ", ".join([v['name'] for v in product['color_variants'][:3]]) + 
-                      (f" and {variant_count-3} more..." if variant_count > 3 else ""))
+                print(f"   Available in {variant_count} colors:")
+                for v in product['color_variants'][:3]:
+                    print(f"     - {v['name']}: {v['url']}")
+                if variant_count > 3:
+                    print(f"     - ...and {variant_count-3} more colors")
             
             # Display badge information if available
             if 'badge' in product:
@@ -120,7 +123,6 @@ def example_search():
                 
             # Display ASIN
             print(f"   ASIN: {product.get('asin', 'N/A')}")
-            print(f"   URL: {product.get('url', 'N/A')[:60]}...")
             
         # Show summary for remaining products
         if len(products) > detailed_count:
@@ -130,6 +132,80 @@ def example_search():
         with open("enhanced_search_results.json", "w") as f:
             json.dump(products, f, indent=2)
             print(f"\nFull search results saved to enhanced_search_results.json")
+    else:
+        print("No products found or search failed.")
+
+
+def example_search_by_url(url):
+    """Example: Searching for products with enhanced parsing"""
+    print_section("Enhanced Product Search Example")
+    
+    # Create a scraper with configuration
+    scraper = AmazonScraper(
+        country_code="in",
+        impersonate="chrome119"
+    )
+    
+    # Method 2: Search using a pre-constructed URL
+    print(f"\n--- Method 2: Enhanced Search by URL ---")
+    print(f"Searching with URL: {url}")
+    
+    # Search with 5 pages of results for demonstration
+    products = scraper.search_products(search_url=url, max_pages=5)
+    
+    # Display the enhanced results
+    if products:
+        print(f"\nFound {len(products)} products:")
+        
+        # Show more detailed information for the first few products
+        detailed_count = min(3, len(products))
+        for i, product in enumerate(products[:detailed_count], 1):
+            print(f"\n{i}. {product.get('title', 'N/A')}")
+            print(f"   Brand: {product.get('brand', 'N/A')}")
+            print(f"   Price: {product.get('currency', '')} {product.get('price', 'N/A')}")
+            print(f"   URL: {product.get('url')}")  # This will now be in canonical format
+            
+            # Display discount information if available
+            if 'original_price' in product:
+                print(f"   Original Price: {product.get('currency', '')} {product.get('original_price')}")
+                print(f"   Discount: {product.get('discount_percent', 'N/A')}% off")
+            
+            # Display ratings and reviews
+            if 'rating' in product:
+                print(f"   Rating: {product.get('rating')} / 5.0 ({product.get('reviews_count', 0)} reviews)")
+            
+            # Display color variants if available
+            if 'color_variants' in product:
+                variant_count = len(product['color_variants'])
+                print(f"   Available in {variant_count} colors:")
+                for v in product['color_variants'][:3]:
+                    print(f"     - {v['name']}: {v['url']}")
+                if variant_count > 3:
+                    print(f"     - ...and {variant_count-3} more colors")
+            
+            # Display badge information if available
+            if 'badge' in product:
+                print(f"   Badge: {product.get('badge')}")
+                
+            # Display Prime eligibility
+            prime_status = "Yes" if product.get('prime', False) else "No"
+            print(f"   Prime Eligible: {prime_status}")
+            
+            # Display delivery information
+            if 'delivery_info' in product:
+                print(f"   Delivery: {product.get('delivery_info')}")
+                
+            # Display ASIN
+            print(f"   ASIN: {product.get('asin', 'N/A')}")
+            
+        # Show summary for remaining products
+        if len(products) > detailed_count:
+            print(f"\n... and {len(products) - detailed_count} more products")
+        
+        # Save all results to JSON for reference
+        with open("enhanced_search_results_by_url.json", "w") as f:
+            json.dump(products, f, indent=2)
+            print(f"\nFull search results saved to enhanced_search_results_by_url.json")
     else:
         print("No products found or search failed.")
 
@@ -158,5 +234,6 @@ def example_config():
 if __name__ == "__main__":
     # Uncomment the examples you want to run
     # example_config()
-    # example_product_detail()
-    example_search()  # Show the enhanced search capabilities 
+    example_product_detail()
+    example_search_by_query("men sneakers size 9")  # Show the enhanced search capabilities 
+    # example_search_by_url("https://www.amazon.in/s?i=shoes&rh=n%3A1983518031&s=popularity-rank&fs=true&page=3&qid=1744969008&xpid=N4QxjmZRSTTMf&ref=is_pn_2")
