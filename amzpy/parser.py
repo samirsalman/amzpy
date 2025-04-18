@@ -10,6 +10,7 @@ It uses BeautifulSoup to extract structured data from Amazon's HTML.
 """
 
 import re
+import json
 from urllib.parse import urljoin
 from bs4 import BeautifulSoup
 from typing import Dict, Optional, TYPE_CHECKING, Any, List, Tuple
@@ -127,7 +128,6 @@ def parse_product_page(html_content: str, url: str = None, engine: Any = None, m
                 img_url = data_old_hires
             elif data_a_dynamic_image:
                 # This attribute contains a JSON string with multiple image URLs
-                import json
                 try:
                     image_dict = json.loads(data_a_dynamic_image)
                     # Get the URL with the highest resolution
@@ -181,6 +181,8 @@ def parse_search_page(html_content: str, base_url: str = None) -> List[Dict]:
     - Thumbnail image
     - Ratings and review count when available
     - Prime eligibility
+    - Color variants
+    - Discounts
     
     Args:
         html_content (str): Raw HTML content of the search results page
@@ -206,12 +208,16 @@ def parse_search_page(html_content: str, base_url: str = None) -> List[Dict]:
     results = []
     
     try:
-        # Try to locate search result containers
-        # Amazon has multiple formats for search results, so we try several selectors
+        # Try to locate search result containers - Amazon has multiple formats
+        # Try the most common selectors first
         product_containers = soup.select('div[data-component-type="s-search-result"]')
         
-        # Alternative selector for some Amazon variants
+        # Alternative selectors for different Amazon layouts
         if not product_containers:
+            product_containers = soup.select('.s-result-item[data-asin]')
+        
+        if not product_containers:
+            # Try more generic selectors as fallback
             product_containers = soup.select('.s-result-item')
         
         print(f"Found {len(product_containers)} potential product containers")
@@ -224,19 +230,42 @@ def parse_search_page(html_content: str, base_url: str = None) -> List[Dict]:
                     continue
                 
                 # Skip non-product containers (sometimes Amazon includes dividers, etc.)
-                if 'asin' not in container.attrs:
+                # Extract ASIN (Amazon Standard Identification Number)
+                asin = container.get('data-asin') or container.get('asin')
+                if not asin or asin == "":
                     continue
                 
-                # Extract product data
-                product_data = {}
+                # Initialize product data dictionary
+                product_data = {"asin": asin}
                 
-                # Get ASIN (Amazon Standard Identification Number)
-                product_data['asin'] = container.get('data-asin') or container.get('asin')
+                # Extract product URL and title (multiple possible selectors)
+                title_link = None
                 
-                # Get product URL and title
-                title_link = container.select_one('h2 a.a-link-normal') or container.select_one('.a-text-normal')
+                # Try various title selectors that appear across different Amazon layouts
+                title_selectors = [
+                    'h2 a.a-link-normal',             # Common layout
+                    '.a-text-normal[href]',           # Alternative layout
+                    'h2.a-size-base-plus a',          # Layout from example
+                    'a.s-line-clamp-2',               # Another layout from example
+                    '.a-text-normal[data-hover]',     # Alternative layout
+                    '.a-size-base-plus[aria-label]'   # Layout with aria-label
+                ]
+                
+                for selector in title_selectors:
+                    title_link = container.select_one(selector)
+                    if title_link:
+                        break
+                
                 if title_link:
-                    product_data['title'] = title_link.text.strip()
+                    # Extract title - check multiple attributes
+                    if title_link.get('aria-label'):
+                        product_data['title'] = title_link.get('aria-label')
+                    elif title_link.select_one('span'):
+                        product_data['title'] = title_link.select_one('span').text.strip()
+                    else:
+                        product_data['title'] = title_link.text.strip()
+                    
+                    # Extract URL from href attribute
                     href = title_link.get('href')
                     if href:
                         # Handle relative URLs
@@ -245,7 +274,22 @@ def parse_search_page(html_content: str, base_url: str = None) -> List[Dict]:
                         else:
                             product_data['url'] = href
                 
-                # Get price
+                # Extract brand (multiple possible locations)
+                brand_selectors = [
+                    '.a-row .a-size-base-plus.a-color-base',  # Common location
+                    '.a-size-base-plus:not([aria-label])',    # Alternative location
+                    'h2 .a-size-base-plus',                   # Format from example
+                    '.s-line-clamp-1 span'                    # Another common format
+                ]
+                
+                for selector in brand_selectors:
+                    brand_elem = container.select_one(selector)
+                    if brand_elem and brand_elem.text.strip():
+                        product_data['brand'] = brand_elem.text.strip()
+                        break
+                
+                # Extract price information (multiple possible selectors)
+                # First, look for the a-price structure (most common)
                 price_element = container.select_one('.a-price .a-offscreen')
                 if price_element:
                     price_text = price_element.text.strip()
@@ -258,33 +302,190 @@ def parse_search_page(html_content: str, base_url: str = None) -> List[Dict]:
                     
                     if price_match:
                         product_data['price'] = float(price_match.group().replace(',', ''))
+                        
+                # If price not found, try alternative selectors
+                if 'price' not in product_data:
+                    price_whole = container.select_one('.a-price-whole')
+                    price_fraction = container.select_one('.a-price-fraction')
+                    if price_whole:
+                        price_text = price_whole.text.strip().replace(',', '')
+                        if price_fraction:
+                            fraction_text = price_fraction.text.strip()
+                            product_data['price'] = float(f"{price_text}.{fraction_text}")
+                        else:
+                            product_data['price'] = float(price_text)
+                            
+                # Extract currency symbol if not already found
+                if 'currency' not in product_data and container.select_one('.a-price-symbol'):
+                    product_data['currency'] = container.select_one('.a-price-symbol').text.strip()
                 
-                # Get product image
-                img_element = container.select_one('img.s-image')
-                if img_element:
-                    product_data['img_url'] = img_element.get('src')
+                # Extract original price and calculate discount (if available)
+                original_price_elem = container.select_one('.a-price.a-text-price .a-offscreen')
+                if original_price_elem:
+                    original_price_text = original_price_elem.text.strip()
+                    price_match = re.search(r'[\d,]+\.?\d*', original_price_text)
+                    if price_match:
+                        original_price = float(price_match.group().replace(',', ''))
+                        product_data['original_price'] = original_price
+                        
+                        # Calculate discount percentage if both prices are available
+                        if 'price' in product_data and product_data['price'] > 0:
+                            discount = round(100 - (product_data['price'] / original_price * 100))
+                            product_data['discount_percent'] = discount
                 
-                # Get ratings
-                rating_element = container.select_one('i.a-icon-star-small')
-                if rating_element:
-                    rating_text = rating_element.text.strip()
-                    rating_match = re.search(r'([\d\.]+)', rating_text)
-                    if rating_match:
-                        product_data['rating'] = float(rating_match.group(1))
+                # Extract discount percentage directly if available
+                discount_text = container.select_one('span:-soup-contains("% off")')
+                if discount_text and 'discount_percent' not in product_data:
+                    discount_match = re.search(r'(\d+)%', discount_text.text)
+                    if discount_match:
+                        product_data['discount_percent'] = int(discount_match.group(1))
                 
-                # Get review count
-                reviews_element = container.select_one('span[aria-label*="reviews"]')
-                if reviews_element:
-                    reviews_text = reviews_element.get('aria-label', '')
-                    reviews_match = re.search(r'([\d,]+)', reviews_text)
-                    if reviews_match:
-                        product_data['reviews_count'] = int(reviews_match.group(1).replace(',', ''))
+                # Extract product image (multiple possible selectors)
+                img_selectors = [
+                    'img.s-image',                     # Common layout
+                    '.s-image img',                    # Alternative layout
+                    '.a-section img[srcset]',          # Layout from example
+                    '.s-product-image-container img'   # Another layout
+                ]
+                
+                for selector in img_selectors:
+                    img_element = container.select_one(selector)
+                    if img_element:
+                        # First try to get the highest resolution version using srcset
+                        if img_element.get('srcset'):
+                            srcset = img_element.get('srcset')
+                            srcset_parts = srcset.split(',')
+                            if srcset_parts:
+                                # Get the last one (usually highest resolution)
+                                highest_res = srcset_parts[-1].strip().split(' ')[0]
+                                product_data['img_url'] = highest_res
+                        # Fallback to src attribute
+                        if 'img_url' not in product_data and img_element.get('src'):
+                            product_data['img_url'] = img_element.get('src')
+                        break
+                
+                # Extract ratings (multiple possible formats)
+                rating_selectors = [
+                    'i.a-icon-star-small',            # Common layout
+                    '.a-icon-star',                   # Alternative layout
+                    'span.a-icon-alt',                # Text inside span
+                    'i.a-star-mini-4',                # Format from example
+                    '[aria-label*="out of 5 stars"]'  # Aria-label format
+                ]
+                
+                for selector in rating_selectors:
+                    rating_element = container.select_one(selector)
+                    if rating_element:
+                        # Try to extract from aria-label first
+                        if rating_element.get('aria-label') and 'out of 5' in rating_element.get('aria-label'):
+                            rating_text = rating_element.get('aria-label')
+                        # Try alt text next
+                        elif rating_element.get('alt') and 'out of 5' in rating_element.get('alt'):
+                            rating_text = rating_element.get('alt')
+                        # Try inner text or parent text
+                        else:
+                            rating_text = rating_element.text.strip()
+                            # If no text, try parent
+                            if not rating_text and rating_element.parent:
+                                rating_text = rating_element.parent.text.strip()
+                            
+                        # Extract the numeric rating
+                        rating_match = re.search(r'([\d\.]+)(?:\s+out\s+of\s+5)?', rating_text)
+                        if rating_match:
+                            product_data['rating'] = float(rating_match.group(1))
+                            break
+                
+                # Extract reviews count (multiple possible formats)
+                reviews_selectors = [
+                    'span[aria-label*="reviews"]',                 # Common layout
+                    '.a-size-base.s-underline-text',               # Format from example
+                    'a:-soup-contains("ratings")',                 # Alternative text-based
+                    'a:-soup-contains("reviews")',                 # Another alternative
+                    '.a-link-normal .a-size-base'                  # Generic link to reviews
+                ]
+                
+                for selector in reviews_selectors:
+                    reviews_element = container.select_one(selector)
+                    if reviews_element:
+                        reviews_text = ""
+                        # Try aria-label first
+                        if reviews_element.get('aria-label'):
+                            reviews_text = reviews_element.get('aria-label')
+                        # Otherwise use text content
+                        else:
+                            reviews_text = reviews_element.text.strip()
+                        
+                        # Extract digits with K/M suffix handling
+                        reviews_match = re.search(r'([\d,\.]+)(?:K|k|M)?', reviews_text)
+                        if reviews_match:
+                            count_text = reviews_match.group(1).replace(',', '')
+                            count = float(count_text)
+                            
+                            # Handle K/M suffixes
+                            if 'K' in reviews_text or 'k' in reviews_text:
+                                count *= 1000
+                            elif 'M' in reviews_text:
+                                count *= 1000000
+                                
+                            product_data['reviews_count'] = int(count)
+                            break
                 
                 # Check for Prime eligibility
-                prime_element = container.select_one('i.a-icon-prime')
-                product_data['prime'] = bool(prime_element)
+                prime_selectors = [
+                    'i.a-icon-prime',                     # Common layout
+                    '.a-icon-prime',                      # Alternative layout
+                    'span:-soup-contains("Prime")',       # Text-based detection
+                    '.aok-relative.s-icon-text-medium',   # Format from example
+                    '[aria-label="Prime"]'                # Aria-label based
+                ]
                 
-                # Add the product to our results list
+                product_data['prime'] = any(container.select_one(selector) for selector in prime_selectors)
+                
+                # Extract color variants if available
+                color_variants = []
+                color_swatches = container.select('.s-color-swatch-outer-circle')
+                
+                if color_swatches:
+                    for swatch in color_swatches:
+                        color_link = swatch.select_one('a')
+                        if color_link:
+                            color_name = color_link.get('aria-label', '')
+                            color_url = color_link.get('href', '')
+                            if color_name and color_url:
+                                if color_url.startswith('/'):
+                                    color_url = urljoin(base_url, color_url) if base_url else color_url
+                                    
+                                color_variants.append({
+                                    'name': color_name,
+                                    'url': color_url
+                                })
+                
+                if color_variants:
+                    product_data['color_variants'] = color_variants
+                
+                # Extract "Amazon's Choice" or "Best Seller" badges
+                badge_text = None
+                badge_element = container.select_one('.a-badge-text') or container.select_one('[aria-label*="Choice"]')
+                if badge_element:
+                    badge_text = badge_element.text.strip()
+                    if not badge_text and badge_element.get('aria-label'):
+                        badge_text = badge_element.get('aria-label')
+                    
+                    if badge_text:
+                        product_data['badge'] = badge_text
+                
+                # Extract delivery information
+                delivery_element = container.select_one('.a-row:-soup-contains("delivery")') or container.select_one('[aria-label*="delivery"]')
+                if delivery_element:
+                    delivery_text = delivery_element.text.strip()
+                    product_data['delivery_info'] = delivery_text
+                
+                # Extract "Deal" information
+                deal_element = container.select_one('span:-soup-contains("Deal")') or container.select_one('.a-badge:-soup-contains("Deal")')
+                if deal_element:
+                    product_data['deal'] = True
+                
+                # Add the product to our results list if we have the key information
                 if product_data.get('title') and product_data.get('url'):
                     results.append(product_data)
                 
@@ -319,7 +520,8 @@ def parse_pagination_url(html_content: str, base_url: str = None) -> Optional[st
     next_link = (
         soup.select_one('a.s-pagination-next:not(.s-pagination-disabled)') or
         soup.select_one('li.a-last:not(.a-disabled) a') or
-        soup.select_one('a:has(span:contains("Next"))')
+        soup.select_one('a:has(span:contains("Next"))') or
+        soup.select_one('a[aria-label="Go to next page"]')
     )
     
     if next_link and next_link.get('href'):

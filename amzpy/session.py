@@ -24,7 +24,7 @@ DEFAULT_CONFIG = {
     'MAX_RETRIES': 3,
     'REQUEST_TIMEOUT': 25,
     'DELAY_BETWEEN_REQUESTS': (2, 5),
-    'DEFAULT_IMPERSONATE': 'chrome119'
+    'DEFAULT_IMPERSONATE': 'chrome119'  # part of curl_cffi's impersonation
 }
 
 # Default header template
