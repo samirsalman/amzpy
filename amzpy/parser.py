@@ -1,6 +1,8 @@
+import re
 from bs4 import BeautifulSoup
 from typing import Dict, Optional
 from amzpy.engine import RequestEngine
+from amzpy.utils import extract_brand_name
 
 def parse_product_page(html_content: str, url: str = None, engine: RequestEngine = None, max_retries: int = 0) -> Optional[Dict]:
     """
@@ -39,6 +41,12 @@ def parse_product_page(html_content: str, url: str = None, engine: RequestEngine
         # Get currency symbol
         currency_element = soup.select_one('.a-price-symbol')
         currency = currency_element.text.strip() if currency_element else None
+
+        # Get brand name
+        brand_name = None
+        brand_element = soup.select_one('#bylineInfo')
+        if brand_element:
+            brand_name = extract_brand_name(brand_element.text.strip())
         
         # Get main product image
         img_element = soup.select_one('#landingImage') or soup.select_one('#imgBlkFront')
@@ -48,7 +56,8 @@ def parse_product_page(html_content: str, url: str = None, engine: RequestEngine
             "title": title,
             "price": price,
             "img_url": img_url,
-            "currency": currency
+            "currency": currency,
+            "brand": brand_name
         }
     except Exception:
         # If we have retries left, try again

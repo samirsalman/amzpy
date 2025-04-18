@@ -36,3 +36,10 @@ def parse_amazon_url(url: str) -> Optional[Tuple[str, str]]:
     product_id = match.group(2)
     
     return base_url, product_id 
+
+# Function to extract brand name from text
+def extract_brand_name(text):
+    match = re.search(r'visit the (.+?) store', text, re.IGNORECASE)
+    if match:
+        return match.group(1).strip()
+    return None
