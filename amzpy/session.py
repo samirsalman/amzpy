@@ -97,6 +97,9 @@ class AmzSession:
         
         # Set browser impersonation if provided, otherwise use default
         self.session.impersonate = impersonate or self.config['DEFAULT_IMPERSONATE']
+
+        # Get and Set Cookies from the base URL
+        self.session.get(self.base_url, headers=headers)
         
         # Configure proxies if provided
         if proxies:
@@ -106,6 +109,7 @@ class AmzSession:
         print(f"AmzSession initialized for amazon.{country_code}")
         print(f"Impersonating: {self.session.impersonate}")
         print(f"User-Agent: {headers['User-Agent'][:50]}...")
+        print("Fetched cookies:", self.session.cookies.get_dict())
         if proxies:
             print(f"Using proxies: {proxies}")
 
