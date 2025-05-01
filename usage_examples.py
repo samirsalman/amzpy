@@ -37,7 +37,8 @@ def example_product_detail():
     scraper.config('MAX_RETRIES = 3, REQUEST_TIMEOUT = 30')
     
     # Set a sample product URL
-    url = "https://www.amazon.in/Sparx-Mens-Red-Black-Flip-Flops/dp/B00IZ936HM/ref=sr_1_37?dib=eyJ2IjoiMSJ9.4xTlnBMWRsZUhc76GhsEgupJp7scFI1-LxWAaKnsBdUkKSFcwS5srU4Asgjnk3U73l841VhqU6DuRbOXQK7_HJ7UufcibD4L1WLcwEZSgmhSxgH--aqN5mp9fjrXRLbbPUIKKcqRN4KpPR-NEmcbGzKqpcSYKgAB9xfCEthgOjpjStXo7LLfKg5vuYALFuJjGiWgcHF3nJOXar4AHCRgSMFtiqQhAQmV_sr_c6rPKtk5YoGq1vn3SuaTNg6FeJiNOw5zNpavF7yS9zUFA0WU0BVve2y09CRdMw18fEqDQJk.zvtFkTh7TwTuQDwW4qBzr63RniJyBBeZjiDg86FATaM&dib_tag=se&qid=1744987780&refinements=p_6%3AA1WYWER0W24N8S%7CAWRHVFFS77KOB&rnid=1318474031&s=shoes&sr=1-37"
+    # url = "https://www.amazon.in/Sparx-Mens-Red-Black-Flip-Flops/dp/B00IZ936HM/ref=sr_1_37?dib=eyJ2IjoiMSJ9.4xTlnBMWRsZUhc76GhsEgupJp7scFI1-LxWAaKnsBdUkKSFcwS5srU4Asgjnk3U73l841VhqU6DuRbOXQK7_HJ7UufcibD4L1WLcwEZSgmhSxgH--aqN5mp9fjrXRLbbPUIKKcqRN4KpPR-NEmcbGzKqpcSYKgAB9xfCEthgOjpjStXo7LLfKg5vuYALFuJjGiWgcHF3nJOXar4AHCRgSMFtiqQhAQmV_sr_c6rPKtk5YoGq1vn3SuaTNg6FeJiNOw5zNpavF7yS9zUFA0WU0BVve2y09CRdMw18fEqDQJk.zvtFkTh7TwTuQDwW4qBzr63RniJyBBeZjiDg86FATaM&dib_tag=se&qid=1744987780&refinements=p_6%3AA1WYWER0W24N8S%7CAWRHVFFS77KOB&rnid=1318474031&s=shoes&sr=1-37"
+    url = "https://www.amazon.in/Ant-Esports-MK801-V2-Mechanical/dp/B0DX1MF624/?_encoding=UTF8&pd_rd_w=gBV9F&content-id=amzn1.sym.3dbb2a14-4841-44d7-82b9-38efdf8e22f7&pf_rd_p=3dbb2a14-4841-44d7-82b9-38efdf8e22f7&pf_rd_r=PE7J86TCWM1CH4HJ03MH&pd_rd_wg=cu00m&pd_rd_r=8228a307-3435-4bbf-81e7-c8809290880f&ref_=pd_hp_d_atf_dealz_m2&th=1"
     
     # Fetch and display product details
     print(f"Fetching details for: {url}\n")
@@ -234,6 +235,6 @@ def example_config():
 if __name__ == "__main__":
     # Uncomment the examples you want to run
     # example_config()
-    #example_product_detail()
+    example_product_detail()
     # example_search_by_query("men sneakers size 9")  # Show the enhanced search capabilities 
-    example_search_by_url("https://www.amazon.in/s?k=shoes+for+men&rh=n%3A1571283031%2Cp_6%3AA1WYWER0W24N8S&dc", max_pages=200)
+    # example_search_by_url("https://www.amazon.in/s?k=shoes+for+men&rh=n%3A1571283031%2Cp_6%3AA1WYWER0W24N8S&dc", max_pages=200)

@@ -67,7 +67,7 @@ def parse_product_page(html_content: str, url: str = None, country_code: str = N
         
         if price_whole:
             # Get whole number part
-            price_text = price_whole.text.strip().replace(',', '')
+            price_text = price_whole.text.strip('.').replace(',', '')
             # Add decimal part if available
             if price_fraction:
                 fraction_text = price_fraction.text.strip()
