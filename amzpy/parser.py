@@ -378,7 +378,14 @@ def parse_search_page(
                     original_price_text = original_price_elem.text.strip()
                     price_match = re.search(r"[\d,]+\.?\d*", original_price_text)
                     if price_match:
-                        price_str = price_match.group().replace(",", "")
+                        price_str = price_match.group()
+                        if "." not in price_str:
+                            # If no decimal point, assume the comma is the decimal separator
+                            price_str = price_str.replace(",", ".")
+                        else:
+                            # If it has a decimal point, replace commas in the whole part (means thousands)
+                            # and remove commas in the fractional part
+                            price_str = price_str.replace(",", "")
                         if price_str and price_str != ".":
                             try:
                                 original_price = float(price_str)
