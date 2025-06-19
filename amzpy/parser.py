@@ -317,28 +317,43 @@ def parse_search_page(
                     price_text = price_element.text.strip()
                     # Parse price and currency
                     currency_match = re.search(r"^[^\d]+", price_text)
-                    price_match = re.search(r"[\d,]+\.?\d*", price_text)
+                    # More precise regex for price matching - ensure we capture the right format
+                    price_match = re.search(
+                        r"(\d{1,3}(?:[,\.]\d{3})*(?:[,\.]\d{2})?|\d+[,\.]\d{2}|\d+)",
+                        price_text,
+                    )
 
                     if currency_match:
                         product_data["currency"] = currency_match.group().strip()
 
                     if price_match:
                         price_str = price_match.group()
-                        if "." not in price_str:
-                            # If no decimal point, assume the comma is the decimal separator
+                        # Check if it's a European format with comma as decimal separator
+                        if re.match(r"^\d+,\d{2}$", price_str):
+                            # Format like "179,00" - comma is decimal separator
                             price_str = price_str.replace(",", ".")
-                        else:
-                            # If it has a decimal point, replace commas in the whole part (means thousands)
-                            # and remove commas in the fractional part
+                        elif re.match(r"^\d{1,3}(,\d{3})+\.\d{2}$", price_str):
+                            # Format like "1,299.99" - comma is thousands separator
                             price_str = price_str.replace(",", "")
+                        elif "." not in price_str and "," in price_str:
+                            # If only comma and no dot, treat comma as decimal
+                            price_str = price_str.replace(",", ".")
+                        elif "." in price_str:
+                            # If has dot, remove all commas (they're thousands separators)
+                            price_str = price_str.replace(",", "")
+
                         # Only convert to float if it's a valid number (not just a decimal point)
-                        if price_str and price_str != ".":
+                        if (
+                            price_str
+                            and price_str != "."
+                            and re.match(r"^\d+\.?\d*$", price_str)
+                        ):
                             try:
                                 product_data["price"] = float(price_str)
                             except ValueError:
                                 # If conversion fails, just log and continue without price
                                 print(
-                                    f"Warning: Could not convert pce string: '{price_str}'"
+                                    f"Warning: Could not convert price string: '{price_str}'"
                                 )
 
                 # If price not found, try alternative selectors
@@ -376,17 +391,35 @@ def parse_search_page(
                 )
                 if original_price_elem:
                     original_price_text = original_price_elem.text.strip()
-                    price_match = re.search(r"[\d,]+\.?\d*", original_price_text)
+                    # Parse currency and price using the same improved logic
+                    currency_match = re.search(r"^[^\d]+", original_price_text)
+                    price_match = re.search(
+                        r"(\d{1,3}(?:[,\.]\d{3})*(?:[,\.]\d{2})?|\d+[,\.]\d{2}|\d+)",
+                        original_price_text,
+                    )
+
                     if price_match:
                         price_str = price_match.group()
-                        if "." not in price_str:
-                            # If no decimal point, assume the comma is the decimal separator
+                        # Check if it's a European format with comma as decimal separator
+                        if re.match(r"^\d+,\d{2}$", price_str):
+                            # Format like "179,00" - comma is decimal separator
                             price_str = price_str.replace(",", ".")
-                        else:
-                            # If it has a decimal point, replace commas in the whole part (means thousands)
-                            # and remove commas in the fractional part
+                        elif re.match(r"^\d{1,3}(,\d{3})+\.\d{2}$", price_str):
+                            # Format like "1,299.99" - comma is thousands separator
                             price_str = price_str.replace(",", "")
-                        if price_str and price_str != ".":
+                        elif "." not in price_str and "," in price_str:
+                            # If only comma and no dot, treat comma as decimal
+                            price_str = price_str.replace(",", ".")
+                        elif "." in price_str:
+                            # If has dot, remove all commas (they're thousands separators)
+                            price_str = price_str.replace(",", "")
+
+                        # Only convert to float if it's a valid number
+                        if (
+                            price_str
+                            and price_str != "."
+                            and re.match(r"^\d+\.?\d*$", price_str)
+                        ):
                             try:
                                 original_price = float(price_str)
                                 product_data["original_price"] = original_price
