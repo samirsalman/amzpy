@@ -317,7 +317,7 @@ def parse_search_page(
                     price_text = price_element.text.strip()
                     # Parse price and currency
                     currency_match = re.search(r"^[^\d]+", price_text)
-                    # More precise regex for price matching - ensure we capture the right format
+                    # More precise regex for price matching
                     price_match = re.search(
                         r"(\d{1,3}(?:[,\.]\d{3})*(?:[,\.]\d{2})?|\d+[,\.]\d{2}|\d+)",
                         price_text,
@@ -328,21 +328,43 @@ def parse_search_page(
 
                     if price_match:
                         price_str = price_match.group()
-                        # Check if it's a European format with comma as decimal separator
-                        if re.match(r"^\d+,\d{2}$", price_str):
-                            # Format like "179,00" - comma is decimal separator
-                            price_str = price_str.replace(",", ".")
-                        elif re.match(r"^\d{1,3}(,\d{3})+\.\d{2}$", price_str):
-                            # Format like "1,299.99" - comma is thousands separator
-                            price_str = price_str.replace(",", "")
-                        elif "." not in price_str and "," in price_str:
-                            # If only comma and no dot, treat comma as decimal
-                            price_str = price_str.replace(",", ".")
-                        elif "." in price_str:
-                            # If has dot, remove all commas (they're thousands separators)
-                            price_str = price_str.replace(",", "")
 
-                        # Only convert to float if it's a valid number (not just a decimal point)
+                        # Better logic to distinguish thousands separator from decimal separator
+                        if re.match(r"^\d{1,3}(,\d{3})+$", price_str):
+                            # Format like "2,999" or "1,234,567" - comma is thousands separator, no decimals
+                            price_str = price_str.replace(",", "")
+                        elif re.match(r"^\d{1,3}(,\d{3})+\.\d{2}$", price_str):
+                            # Format like "2,999.00" - comma is thousands separator, dot is decimal
+                            price_str = price_str.replace(",", "")
+                        elif re.match(r"^\d{1,3}(\.\d{3})+,\d{2}$", price_str):
+                            # Format like "2.999,00" (European) - dot is thousands separator, comma is decimal
+                            price_str = price_str.replace(".", "").replace(",", ".")
+                        elif re.match(r"^\d+,\d{2}$", price_str):
+                            # Format like "179,00" - comma is decimal separator (only if 2 digits after comma)
+                            price_str = price_str.replace(",", ".")
+                        elif re.match(r"^\d+\.\d{2}$", price_str):
+                            # Format like "179.00" - dot is decimal separator
+                            pass  # Already correct format
+                        elif "." not in price_str and "," in price_str:
+                            # If only comma, check if it's likely thousands vs decimal
+                            if len(price_str.split(",")[-1]) == 2:
+                                # Last part has 2 digits, likely decimal separator
+                                price_str = price_str.replace(",", ".")
+                            else:
+                                # Likely thousands separator
+                                price_str = price_str.replace(",", "")
+                        elif "." in price_str and "," in price_str:
+                            # Both present - need to determine which is which based on position
+                            dot_pos = price_str.rfind(".")
+                            comma_pos = price_str.rfind(",")
+                            if comma_pos > dot_pos:
+                                # Comma comes after dot, so dot is thousands, comma is decimal
+                                price_str = price_str.replace(".", "").replace(",", ".")
+                            else:
+                                # Dot comes after comma, so comma is thousands, dot is decimal
+                                price_str = price_str.replace(",", "")
+
+                        # Only convert to float if it's a valid number
                         if (
                             price_str
                             and price_str != "."
@@ -351,7 +373,6 @@ def parse_search_page(
                             try:
                                 product_data["price"] = float(price_str)
                             except ValueError:
-                                # If conversion fails, just log and continue without price
                                 print(
                                     f"Warning: Could not convert price string: '{price_str}'"
                                 )
@@ -400,19 +421,41 @@ def parse_search_page(
 
                     if price_match:
                         price_str = price_match.group()
-                        # Check if it's a European format with comma as decimal separator
-                        if re.match(r"^\d+,\d{2}$", price_str):
-                            # Format like "179,00" - comma is decimal separator
-                            price_str = price_str.replace(",", ".")
+
+                        # Better logic to distinguish thousands separator from decimal separator
+                        if re.match(r"^\d{1,3}(,\d{3})+$", price_str):
+                            # Format like "2,999" or "1,234,567" - comma is thousands separator, no decimals
+                            price_str = price_str.replace(",", "")
                         elif re.match(r"^\d{1,3}(,\d{3})+\.\d{2}$", price_str):
-                            # Format like "1,299.99" - comma is thousands separator
+                            # Format like "2,999.00" - comma is thousands separator, dot is decimal
                             price_str = price_str.replace(",", "")
-                        elif "." not in price_str and "," in price_str:
-                            # If only comma and no dot, treat comma as decimal
+                        elif re.match(r"^\d{1,3}(\.\d{3})+,\d{2}$", price_str):
+                            # Format like "2.999,00" (European) - dot is thousands separator, comma is decimal
+                            price_str = price_str.replace(".", "").replace(",", ".")
+                        elif re.match(r"^\d+,\d{2}$", price_str):
+                            # Format like "179,00" - comma is decimal separator (only if 2 digits after comma)
                             price_str = price_str.replace(",", ".")
-                        elif "." in price_str:
-                            # If has dot, remove all commas (they're thousands separators)
-                            price_str = price_str.replace(",", "")
+                        elif re.match(r"^\d+\.\d{2}$", price_str):
+                            # Format like "179.00" - dot is decimal separator
+                            pass  # Already correct format
+                        elif "." not in price_str and "," in price_str:
+                            # If only comma, check if it's likely thousands vs decimal
+                            if len(price_str.split(",")[-1]) == 2:
+                                # Last part has 2 digits, likely decimal separator
+                                price_str = price_str.replace(",", ".")
+                            else:
+                                # Likely thousands separator
+                                price_str = price_str.replace(",", "")
+                        elif "." in price_str and "," in price_str:
+                            # Both present - need to determine which is which based on position
+                            dot_pos = price_str.rfind(".")
+                            comma_pos = price_str.rfind(",")
+                            if comma_pos > dot_pos:
+                                # Comma comes after dot, so dot is thousands, comma is decimal
+                                price_str = price_str.replace(".", "").replace(",", ".")
+                            else:
+                                # Dot comes after comma, so comma is thousands, dot is decimal
+                                price_str = price_str.replace(",", "")
 
                         # Only convert to float if it's a valid number
                         if (
